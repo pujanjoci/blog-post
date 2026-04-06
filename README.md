@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GitBlog - Serverless CMS
 
-## Getting Started
+GitBlog is a fully serverless, Git-based headless CMS blog platform built with Next.js 15, React, and Tailwind CSS. It is designed to be ridiculously fast, secure, and purely static-driven.
 
-First, run the development server:
+## How it works
+
+- **Public Site**: Pre-renders all Markdown files contained in the `/content/posts` folder for superior SEO and ultra-fast loading without API limits.
+- **Admin CMS**: Fetches, creates, and updates posts dynamically via the GitHub REST API using a secure Personal Access Token (stored locally).
+- **Deployment Flow**: When you edit or create a post via the `/admin` interface, the change is committed directly to your GitHub repository. Connected hosting providers (like Vercel or Netlify) will detect this commit and automatically trigger a new static build.
+
+## Prerequisites for Deployment
+
+1. A GitHub account.
+2. A GitHub Personal Access Token (PAT) with `repo` scope permissions.
+3. A Vercel or Netlify account for hosting.
+
+## Setting up your Repository
+1. Push this code to a new public or private repository on your GitHub.
+2. Deploy the repository to Vercel (or Netlify).
+3. The platform is ready to go immediately! No database needed.
+
+## Using the Admin Panel
+
+1. Navigate to `/admin` on your live site or `localhost:3000/admin`.
+2. Enter your GitHub **Username** (Owner), your **Repository Name**, and your **Personal Access Token**.
+3. You will immediately see existing posts.
+4. Click **New Post** to create content with the built-in rich Markdown editor, or edit an existing post.
+5. Hit **Save Post** to commit changes permanently to your GitHub repository.
+
+## Local Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Your local site will run on `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tech Stack
+- **Framework:** Next.js (App Router)
+- **Styling:** Tailwind CSS v4
+- **Markdown:** `react-markdown` and `gray-matter`
+- **GitHub API:** `@octokit/rest`
