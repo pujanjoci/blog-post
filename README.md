@@ -1,4 +1,4 @@
-# GitBlog - Simple Next.js Blog Site
+# MYBlogs - Simple Next.js Blog Site
 
 A fast, lightweight, and modern personal blog site built with Next.js, React, and Tailwind CSS. It is designed to render blog posts directly from local Markdown/MDX files using front-matter (JSON-style metadata). No complex databases or external server setups required.
 

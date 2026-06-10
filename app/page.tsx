@@ -114,7 +114,7 @@ export default function Home() {
             // Fallback when no posts exist
             <div className="flex flex-col items-center max-w-3xl mx-auto gap-6 text-center">
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-none text-white">
-                Welcome to GitBlog
+                Welcome to MYBlogs
               </h1>
               <p className="text-lg sm:text-xl text-gray-400 leading-relaxed">
                 Start writing your first blog post today.

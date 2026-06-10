@@ -3,7 +3,7 @@ import BlogPostsList from "@/components/BlogPostsList";
 import ExploreFilters from "./ExploreFilters";
 
 export const metadata = {
-  title: "Explore – GitBlog",
+  title: "Explore – MYBlogs",
   description: "Browse all blog posts, search and filter by tags.",
 };
 

@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "GitBlog — Serverless CMS",
-  description: "A beautiful, Git-based headless CMS blog platform powered by GitHub and Next.js.",
+  title: "MYBlogs — Simple Personal Blog",
+  description: "A beautiful, fast, and modern personal blog site powered by Markdown and Next.js.",
 };
 
 export default function RootLayout({
