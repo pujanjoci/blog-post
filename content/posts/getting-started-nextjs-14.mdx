@@ -1,0 +1,60 @@
+---
+title: "Getting Started with Next.js 14 and the App Router"
+date: "2026-02-01"
+description: "An in-depth guide to building modern web applications with Next.js 14, exploring the new App Router, server components, and streaming."
+tags: ["Next.js", "React", "Web Development"]
+draft: false
+coverImage: "/images/nextjs-cover.png"
+image: "/images/next.png"
+author: "Pujan Joshi"
+---
+
+# Getting Started with Next.js 14
+
+Next.js 14 brings exciting new features and improvements to the React framework ecosystem. In this post, we'll explore the App Router, server components, and how to build performant applications.
+
+## Why Next.js?
+
+Next.js has become the go-to framework for React developers who want:
+
+- **Server-side rendering** for better SEO and performance
+- **File-based routing** that's intuitive and scalable
+- **Built-in optimization** for images, fonts, and scripts
+- **Flexibility** to choose between static and dynamic rendering
+
+## The App Router
+
+The App Router is a paradigm shift in how we structure Next.js applications. Unlike the Pages Router, it embraces React Server Components by default.
+
+### Key Benefits
+
+1. **Improved performance** through automatic code splitting
+2. **Better developer experience** with colocation of components
+3. **Streaming and Suspense** support out of the box
+
+```typescript
+// app/page.tsx
+export default function Home() {
+  return (
+    <main>
+      <h1>Welcome to Next.js 14</h1>
+    </main>
+  );
+}
+```
+
+## Server Components vs Client Components
+
+Understanding when to use each component type is crucial:
+
+- **Server Components**: Default in App Router, render on the server, reduce bundle size
+- **Client Components**: Use `'use client'` directive, for interactivity and hooks
+
+### Rendering Architecture Flow
+![Next.js Server Components Diagram](/images/nextjs(end).png)
+
+## Conclusion
+
+Next.js 14 represents a major step forward in web development. The App Router, combined with server components, enables us to build faster, more efficient applications.
+
+Start exploring today and experience the future of React development!

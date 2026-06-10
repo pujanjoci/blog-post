@@ -1,55 +1,128 @@
 "use client";
+
 import Link from 'next/link';
-import { Moon, Sun, Settings } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useState, ComponentType } from 'react';
+import {
+  BookOpen,
+  Search,
+  Menu,
+  X,
+  PlusCircle,
+  User,
+} from 'lucide-react';
+
+interface NavLink {
+  href: string;
+  label: string;
+  icon?: ComponentType<{ size?: number }>;
+}
 
 export default function Navbar() {
-  const [theme, setTheme] = useState('light');
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
+  const navLinks: NavLink[] = [
+    { href: '/', label: 'Home' },
+    { href: '/explore', label: 'Explore' },
+  ];
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-white/70 dark:bg-black/70 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 transition-colors">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          <Link href="/" className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            GIT<span className="text-blue-600 dark:text-blue-400">BLOG</span>
-          </Link>
-          
-          <div className="flex items-center gap-4">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors"
-              aria-label="Toggle Dark Mode"
+          {/* Left: Logo + Nav Links */}
+          <div className="flex items-center gap-8">
+            <Link
+              href="/"
+              className="flex items-center gap-2.5 group shrink-0"
+              title="Home"
             >
-              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-            <Link 
-              href="/admin"
-              className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors"
-              title="Admin Panel"
-            >
-              <Settings size={20} />
+              <span className="text-base font-semibold text-white">
+                My<span className="text-purple-500">Blogs</span>
+              </span>
             </Link>
+
+            {/* Desktop Nav Links */}
+            <div className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                const Icon = link.icon;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'bg-white/10 text-white'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {Icon && <Icon size={16} />}
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right: Search, User, Mobile Toggle */}
+          <div className="flex items-center gap-2">
+            {/* Search Bar (desktop) */}
+            {/* <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-lg bg-white/5 border border-transparent hover:border-white/10 focus-within:border-white/20 transition-all">
+              <Search size={16} className="text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search blogs..."
+                className="bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none w-32 lg:w-48"
+              />
+            </div> */}
+
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-white/5 py-4 space-y-2">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-white/10 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {Icon && <Icon size={16} />}
+                  {link.label}
+                </Link>
+              );
+            })}
+
+            {/* Mobile Search */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/5">
+              <Search size={16} className="text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none w-full"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

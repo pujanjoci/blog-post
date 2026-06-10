@@ -1,0 +1,78 @@
+---
+title: "Mastering Tailwind CSS: Tips and Tricks"
+date: "2026-01-28"
+description: "Discover powerful Tailwind CSS techniques to streamline your workflow and create beautiful, maintainable designs."
+tags: ["CSS", "Tailwind", "Design"]
+draft: false
+coverImage: "/images/tailwind-cover.png"
+image: "/images/tailwind.png"
+author: "Pujan Joshi"
+---
+
+# Mastering Tailwind CSS
+
+Tailwind CSS has revolutionized how we approach styling in modern web development. Let's dive into some advanced techniques and best practices.
+
+## Setting Up a Design System
+
+A well-structured design system is the foundation of any great project. With Tailwind, you can define your design tokens in `tailwind.config.js`:
+
+```javascript
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#e85d04',
+        secondary: '#64748b',
+      },
+      spacing: {
+        '18': '4.5rem',
+        '22': '5.5rem',
+      },
+    },
+  },
+};
+```
+
+## Utility-First Approach
+
+The utility-first methodology encourages:
+
+- **Rapid prototyping** without context switching
+- **Consistent spacing** through predefined utilities
+- **Reduced CSS bloat** with PurgeCSS
+
+### Example Component
+
+```html
+<div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+  <h2 class="text-2xl font-bold mb-4">Card Title</h2>
+  <p class="text-gray-600">Card description goes here.</p>
+</div>
+```
+
+## Custom Components Pattern
+
+For repeated patterns, extract components using `@apply`:
+
+```css
+.btn-primary {
+  @apply bg-primary text-white px-6 py-3 rounded-lg hover:bg-opacity-90 transition-all;
+}
+```
+
+## Responsive Design
+
+Tailwind's responsive prefixes make mobile-first design effortless:
+
+```html
+<div class="text-sm md:text-base lg:text-lg">
+  Responsive text size
+</div>
+```
+
+![Mastering Tailwind CSS](/images/tailwind(end).png)
+
+## Conclusion
+
+Tailwind CSS empowers developers to build beautiful interfaces quickly without sacrificing maintainability. Embrace the utility-first approach and watch your productivity soar!

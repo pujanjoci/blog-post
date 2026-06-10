@@ -1,221 +1,178 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { 
-  checkAuth, 
-  loginAdmin, 
-  logoutAdmin, 
-  fetchPostsFromGitHub, 
+import type { GitHubPost } from '@/lib/github';
+import {
+  fetchPostsFromGitHub,
   deletePostFromGitHub,
-  GitHubPost
 } from '@/lib/github';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { LogOut, Plus, Edit, Trash2, Lock } from 'lucide-react';
+import {
+  Plus, Edit3, Trash2, RefreshCw,
+  FileText, AlertCircle,
+} from 'lucide-react';
 
 export default function AdminDashboard() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [password, setPassword] = useState('');
-  
   const [posts, setPosts] = useState<GitHubPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
 
   useEffect(() => {
-    verifyAuth();
+    loadPosts();
   }, []);
 
-  const verifyAuth = async () => {
-    try {
-      const isAuth = await checkAuth();
-      setIsAuthenticated(isAuth);
-      if (isAuth) {
-        loadPosts();
-      }
-    } catch (err) {
-      setIsAuthenticated(false);
-    }
-  };
-
-  const loadPosts = async () => {
+  async function loadPosts() {
     setLoading(true);
     setError('');
     try {
       const data = await fetchPostsFromGitHub();
       setPosts(data);
-    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-      setError(err.message || 'Failed to fetch posts');
-      if (err.message === 'Unauthorized') {
-        setIsAuthenticated(false);
-      }
+    } catch (err: unknown) {
+      const e = err as Error;
+      setError(e.message ?? 'Failed to fetch posts.');
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!password) {
-      setError('Please enter the admin password');
-      return;
-    }
-    setError('');
-    
-    try {
-      const result = await loginAdmin(password);
-      if (result.success) {
-        setPassword('');
-        setIsAuthenticated(true);
-        loadPosts();
-      } else {
-        setError(result.message || 'Invalid password');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Error logging in');
-    }
-  };
-
-  const handleLogout = async () => {
-    await logoutAdmin();
-    setIsAuthenticated(false);
-    setPosts([]);
-  };
-
-  const handleDelete = async (slug: string, sha?: string) => {
+  async function handleDelete(slug: string, sha?: string) {
     if (!sha) return;
-    if (!window.confirm(`Are you sure you want to delete "${slug}"?`)) return;
-    setLoading(true);
+    if (!window.confirm(`Delete "${slug}"? This cannot be undone.`)) return;
+    setDeletingSlug(slug);
+    setError('');
     try {
       await deletePostFromGitHub(slug, sha);
       await loadPosts();
-    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-      setError(err.message || 'Failed to delete post');
+    } catch (err: unknown) {
+      setError((err as Error).message ?? 'Failed to delete post.');
     } finally {
-      setLoading(false);
+      setDeletingSlug(null);
     }
-  };
-
-  // Wait for auth check
-  if (isAuthenticated === null) {
-    return (
-      <div className="flex justify-center p-12">
-         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="max-w-md mx-auto mt-10 p-8 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xl">
-        <div className="flex justify-center mb-6 text-gray-900 dark:text-white">
-          <div className="p-4 bg-gray-100 dark:bg-zinc-800 rounded-full">
-            <Lock size={40} className="text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-        <h2 className="text-2xl font-bold text-center mb-2">Admin Login</h2>
-        <p className="text-center text-sm text-gray-500 mb-8">Access the headless GitCMS dashboard</p>
-        
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-lg text-sm border border-red-200 dark:border-red-800/50">
-            {error}
-          </div>
-        )}
-        
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium mb-1">Admin Password</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
-              placeholder="••••••••"
-            />
-          </div>
-          <button 
-            type="submit"
-            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all duration-200 hover:shadow-lg hover:shadow-blue-600/20 active:scale-[0.98]"
-          >
-            Log in to Dashboard
-          </button>
-        </form>
-      </div>
-    );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
+    <div className="space-y-8 animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Your Posts</h2>
-          <p className="text-gray-500 text-sm mt-1">Manage your blog content synced with GitHub</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Posts</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {posts.length} {posts.length === 1 ? 'post' : 'posts'} in repository
+          </p>
         </div>
-        <div className="flex gap-3">
-          <Link 
-            href="/admin/edit/new"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-sm hover:shadow-blue-600/20 font-medium text-sm"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadPosts}
+            disabled={loading}
+            className="p-2.5 glass border border-white/10 hover:border-white/20 rounded-xl text-gray-400 hover:text-white transition-all disabled:opacity-40"
+            title="Refresh"
           >
-            <Plus size={16} /> New Post
-          </Link>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700 rounded-lg transition-colors shadow-sm font-medium text-sm text-gray-700 dark:text-gray-300"
-          >
-            <LogOut size={16} /> Logout
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
+          <Link
+            href="/admin/edit/new"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-xl transition-all duration-200 shadow-lg shadow-indigo-600/20 hover:-translate-y-0.5"
+          >
+            <Plus size={16} />
+            New Post
+          </Link>
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800/50">
-          {error}
+        <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+          <AlertCircle size={18} className="text-red-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-300">Error</p>
+            <p className="text-sm text-red-400/80 mt-0.5">{error}</p>
+          </div>
         </div>
       )}
 
       {loading ? (
-        <div className="flex justify-center p-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="glass rounded-2xl p-5 border border-white/5 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="h-4 w-48 bg-white/10 rounded" />
+                  <div className="h-3 w-32 bg-white/5 rounded" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-9 w-9 bg-white/5 rounded-xl" />
+                  <div className="h-9 w-9 bg-white/5 rounded-xl" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="glass rounded-3xl border border-white/5 p-14 flex flex-col items-center text-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+            <FileText size={28} className="text-gray-600" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-gray-300">No posts yet</p>
+            <p className="text-gray-600 text-sm mt-1">
+              Create your first post or check your repository credentials.
+            </p>
+          </div>
+          <Link
+            href="/admin/edit/new"
+            className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 hover:text-indigo-300 font-medium text-sm rounded-xl transition-all hover:border-indigo-500/50"
+          >
+            <Plus size={15} />
+            Write your first post
+          </Link>
         </div>
       ) : (
-        <div className="bg-white dark:bg-zinc-900 shadow-sm border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-          {posts.length === 0 ? (
-            <div className="p-12 text-center text-gray-500 dark:text-gray-400">
-              <div className="flex justify-center mb-4">
-                <Edit className="w-12 h-12 text-gray-300 dark:text-gray-600" />
+        <div className="space-y-3">
+          {posts.map((post, i) => (
+            <div
+              key={post.slug}
+              className="glass rounded-2xl border border-white/5 hover:border-indigo-500/20 transition-all duration-300 group"
+              style={{ animationDelay: `${i * 50}ms` }}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-1.5">
+                    <h3 className="font-semibold text-white group-hover:text-indigo-300 transition-colors truncate">
+                      {post.title}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-gray-600">
+                    <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded text-gray-500">
+                      /{post.slug}
+                    </span>
+                    <span>/</span>
+                    <time>{format(new Date(post.date), "MMM d, yyyy")}</time>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Link
+                    href={`/admin/edit/${post.slug}`}
+                    className="p-2.5 rounded-xl bg-white/5 border border-white/8 hover:bg-indigo-600/15 hover:border-indigo-500/30 text-gray-500 hover:text-indigo-400 transition-all"
+                    title="Edit"
+                  >
+                    <Edit3 size={16} />
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(post.slug, post.sha)}
+                    disabled={deletingSlug === post.slug}
+                    className="p-2.5 rounded-xl bg-white/5 border border-white/8 hover:bg-red-500/15 hover:border-red-500/30 text-gray-500 hover:text-red-400 transition-all disabled:opacity-40"
+                    title="Delete"
+                  >
+                    {deletingSlug === post.slug ? (
+                      <RefreshCw size={16} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={16} />
+                    )}
+                  </button>
+                </div>
               </div>
-              <p className="text-lg font-medium text-gray-900 dark:text-white">No posts found</p>
-              <p className="mt-1">Content stored in the repository will appear here.</p>
             </div>
-          ) : (
-            <ul className="divide-y divide-gray-200 dark:divide-zinc-800">
-              {posts.map((post) => (
-                <li key={post.slug} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
-                  <div className="mb-4 sm:mb-0">
-                    <h3 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white">{post.title}</h3>
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 gap-3">
-                      <span className="font-mono text-xs bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">/{post.slug}</span>
-                      <span>•</span>
-                      <span>{format(new Date(post.date), "MMM d, yyyy")}</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link 
-                      href={`/admin/edit/${post.slug}`}
-                      className="p-2 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 bg-gray-100 hover:bg-blue-50 dark:bg-zinc-800 dark:hover:bg-blue-900/30 rounded-lg transition-colors border border-transparent dark:hover:border-blue-900/50"
-                    >
-                      <Edit size={18} />
-                    </Link>
-                    <button 
-                      onClick={() => handleDelete(post.slug, post.sha)}
-                      className="p-2 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 bg-gray-100 hover:bg-red-50 dark:bg-zinc-800 dark:hover:bg-red-900/30 rounded-lg transition-colors border border-transparent dark:hover:border-red-900/50"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          ))}
         </div>
       )}
     </div>

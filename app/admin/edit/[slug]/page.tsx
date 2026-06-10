@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
-import { 
-  checkAuth, 
-  fetchPostBySlugFromGitHub, 
+import type { GitHubPost } from '@/lib/github';
+import {
+  fetchPostBySlugFromGitHub,
   savePostToGitHub,
-  GitHubPost
 } from '@/lib/github';
 import Link from 'next/link';
-import { ArrowLeft, Save, Eye, Edit2 } from 'lucide-react';
+import {
+  ArrowLeft, Save, Eye, Edit2, AlertCircle, CheckCircle2,
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export default function EditPost({ params }: { params: Promise<{ slug: string }> }) {
@@ -19,9 +20,10 @@ export default function EditPost({ params }: { params: Promise<{ slug: string }>
   const isNew = urlSlug === 'new';
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [view, setView] = useState<'edit' | 'preview'>('edit');
+  const [isPending, startTransition] = useTransition();
 
   const [post, setPost] = useState<GitHubPost>({
     slug: '',
@@ -32,191 +34,238 @@ export default function EditPost({ params }: { params: Promise<{ slug: string }>
   });
 
   useEffect(() => {
-    verifyAndLoad();
-  }, [urlSlug]);
-
-  const verifyAndLoad = async () => {
-    try {
-      const isAuth = await checkAuth();
-      if (!isAuth) {
-        router.push('/admin');
+    async function loadInitialPost() {
+      if (isNew) {
+        setLoading(false);
         return;
       }
 
-      if (!isNew) {
-        await loadPost();
-      } else {
+      setLoading(true);
+      setError('');
+      try {
+        const data = await fetchPostBySlugFromGitHub(urlSlug);
+        if (data) setPost(data);
+        else setError('Post not found in repository.');
+      } catch (err: unknown) {
+        setError((err as Error).message ?? 'Failed to fetch post.');
+      } finally {
         setLoading(false);
       }
-    } catch (err) {
-      router.push('/admin');
     }
-  };
 
-  const loadPost = async () => {
-    try {
-      const data = await fetchPostBySlugFromGitHub(urlSlug);
-      if (data) {
-        setPost(data);
-      } else {
-        setError('Post not found');
-      }
-    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-      setError(err.message || 'Failed to fetch post');
-    } finally {
-      setLoading(false);
+    loadInitialPost();
+  }, [isNew, urlSlug]);
+
+  function handleTitleChange(value: string) {
+    if (isNew) {
+      const slug = value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      setPost(p => ({ ...p, title: value, slug }));
+    } else {
+      setPost(p => ({ ...p, title: value }));
     }
-  };
+  }
 
-  const handleSave = async () => {
-    if (!post.title || !post.slug) {
-      setError('Title and slug are required');
+  function handleSave() {
+    if (!post.title.trim() || !post.slug.trim()) {
+      setError('Title and slug are required.');
       return;
     }
-
-    setSaving(true);
     setError('');
-    try {
-      await savePostToGitHub(post);
-      router.push('/admin');
-    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-      setError(err.message || 'Failed to save post');
-    } finally {
-      setSaving(false);
-    }
-  };
+    setSuccess('');
+    startTransition(async () => {
+      try {
+        await savePostToGitHub(post);
+        setSuccess('Post saved successfully!');
+        setTimeout(() => router.push('/admin'), 1200);
+      } catch (err: unknown) {
+        setError((err as Error).message ?? 'Failed to save post.');
+      }
+    });
+  }
 
+  // ─── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex justify-center p-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4 text-gray-500">
+          <div className="w-10 h-10 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+          <span className="text-sm">Loading post…</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <Link 
+    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in-up">
+      {/* Topbar */}
+      <div className="flex items-center justify-between gap-4">
+        <Link
           href="/admin"
-          className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-white transition-colors"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
+          <ArrowLeft size={15} />
+          Back to posts
         </Link>
-        <div className="flex gap-3">
-          <div className="flex bg-gray-100 dark:bg-zinc-800 p-1 rounded-lg">
-            <button 
+
+        <div className="flex items-center gap-3">
+          {/* Edit / Preview toggle */}
+          <div className="flex bg-white/5 border border-white/8 p-1 rounded-xl">
+            <button
               onClick={() => setView('edit')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'edit' ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                view === 'edit'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
             >
-              <Edit2 size={14} /> Edit
+              <Edit2 size={13} /> Edit
             </button>
-            <button 
+            <button
               onClick={() => setView('preview')}
-              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'preview' ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                view === 'preview'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
             >
-              <Eye size={14} /> Preview
+              <Eye size={13} /> Preview
             </button>
           </div>
-          <button 
+
+          {/* Save button */}
+          <button
             onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors font-medium text-sm shadow-sm"
+            disabled={isPending}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-indigo-600/20 hover:-translate-y-0.5"
           >
-            <Save size={16} /> {saving ? 'Saving...' : 'Save Post'}
+            <Save size={15} />
+            {isPending ? 'Saving…' : 'Save Post'}
           </button>
         </div>
       </div>
 
+      {/* Alerts */}
       {error && (
-        <div className="mb-6 p-4 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-lg">
-          {error}
+        <div className="flex items-start gap-3 p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl">
+          <AlertCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-red-300">{error}</p>
+        </div>
+      )}
+      {success && (
+        <div className="flex items-center gap-3 p-3.5 bg-green-500/10 border border-green-500/20 rounded-xl">
+          <CheckCircle2 size={16} className="text-green-400" />
+          <p className="text-sm text-green-300">{success}</p>
         </div>
       )}
 
+      {/* Edit Mode */}
       {view === 'edit' ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
-            <div>
-              <label className="block text-sm font-medium mb-1">Markdown Content</label>
-              <textarea 
-                value={post.content}
-                onChange={e => setPost({ ...post, content: e.target.value })}
-                className="w-full h-[600px] p-4 font-mono text-sm rounded-xl border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-blue-500 outline-none resize-none shadow-sm"
-                placeholder="# Write your blog post here..."
-              />
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
+          {/* Markdown Editor */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Content (Markdown)
+            </label>
+            <textarea
+              value={post.content}
+              onChange={e => setPost(p => ({ ...p, content: e.target.value }))}
+              className="w-full h-[540px] p-5 font-mono text-sm leading-relaxed bg-white/4 border border-white/8 hover:border-white/12 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 rounded-2xl text-gray-200 placeholder-gray-700 outline-none resize-none transition-all"
+              placeholder={"# Hello World\n\nStart writing your post here…"}
+            />
           </div>
-          <div className="space-y-6 bg-white dark:bg-zinc-900 p-6 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm h-fit">
-            <div>
-              <label className="block text-sm font-medium mb-1">Title</label>
-              <input 
-                type="text" 
+
+          {/* Metadata Panel */}
+          <div className="glass rounded-2xl border border-white/8 p-5 space-y-5 h-fit">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Post Details</p>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs text-gray-500">Title</label>
+              <input
+                type="text"
                 value={post.title}
-                onChange={e => {
-                  const newTitle = e.target.value;
-                  // Auto-generate slug if it's a new post
-                  if (isNew) {
-                    const newSlug = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-                    setPost({ ...post, title: newTitle, slug: newSlug });
-                  } else {
-                    setPost({ ...post, title: newTitle });
-                  }
-                }}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-transparent focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Post title"
+                onChange={e => handleTitleChange(e.target.value)}
+                className="w-full px-3 py-2.5 bg-white/5 border border-white/8 hover:border-white/15 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-white text-sm placeholder-gray-700 outline-none transition-all"
+                placeholder="My Great Post"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Slug (URL)</label>
-              <input 
-                type="text" 
+
+            <div className="space-y-1.5">
+              <label className="block text-xs text-gray-500">
+                Slug <span className="text-gray-700">(URL path)</span>
+              </label>
+              <input
+                type="text"
                 value={post.slug}
                 disabled={!isNew}
-                onChange={e => setPost({ ...post, slug: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/80 focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-70 disabled:cursor-not-allowed"
-                placeholder="post-slug"
+                onChange={e => setPost(p => ({ ...p, slug: e.target.value }))}
+                className="w-full px-3 py-2.5 bg-white/5 border border-white/8 rounded-xl text-gray-300 text-sm font-mono placeholder-gray-700 outline-none disabled:opacity-50 disabled:cursor-not-allowed focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                placeholder="my-great-post"
               />
-              {!isNew && <p className="text-xs text-gray-500 mt-1">Slug cannot be changed after creation.</p>}
+              {!isNew && (
+                <p className="text-xs text-gray-700">Slug cannot be changed after creation.</p>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Date</label>
-              <input 
-                type="date" 
+
+            <div className="space-y-1.5">
+              <label className="block text-xs text-gray-500">Date</label>
+              <input
+                type="date"
                 value={post.date.split('T')[0]}
-                onChange={e => setPost({ ...post, date: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-transparent focus:ring-2 focus:ring-blue-500 outline-none"
+                onChange={e => setPost(p => ({ ...p, date: e.target.value }))}
+                className="w-full px-3 py-2.5 bg-white/5 border border-white/8 hover:border-white/15 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-gray-300 text-sm outline-none transition-all [color-scheme:dark]"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Excerpt</label>
-              <textarea 
+
+            <div className="space-y-1.5">
+              <label className="block text-xs text-gray-500">Excerpt</label>
+              <textarea
                 value={post.excerpt}
-                onChange={e => setPost({ ...post, excerpt: e.target.value })}
-                className="w-full h-32 px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-transparent focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                placeholder="A short summary of the post..."
+                onChange={e => setPost(p => ({ ...p, excerpt: e.target.value }))}
+                className="w-full h-24 px-3 py-2.5 bg-white/5 border border-white/8 hover:border-white/15 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-gray-300 text-sm placeholder-gray-700 outline-none resize-none transition-all"
+                placeholder="A short summary shown on listing pages…"
               />
+            </div>
+
+            <div className="pt-2 border-t border-white/5 space-y-1 text-xs text-gray-700">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                Saves directly to GitHub
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                Triggers automatic deploy
+              </div>
             </div>
           </div>
         </div>
       ) : (
-        <div className="bg-white dark:bg-zinc-900 p-8 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm min-h-[600px]">
-          <header className="mb-10 border-b border-gray-200 dark:border-zinc-800 pb-8">
-            <time className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-3 block">
-              {post.date}
-            </time>
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-6">
-              {post.title || 'Untitled Post'}
-            </h1>
-            {post.excerpt && (
-              <p className="text-xl text-gray-600 dark:text-gray-400">
-                {post.excerpt}
-              </p>
-            )}
-          </header>
-          <div className="prose prose-lg dark:prose-invert prose-blue max-w-none">
-            <ReactMarkdown>{post.content || '*No content yet.*'}</ReactMarkdown>
+        /* Preview Mode */
+        <div className="glass rounded-2xl border border-white/8 p-8 min-h-[600px]">
+          <div className="max-w-3xl mx-auto">
+            <header className="mb-10 pb-8 border-b border-white/8">
+              <time className="text-xs font-medium text-indigo-400 uppercase tracking-widest block mb-3">
+                {post.date}
+              </time>
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white mb-5 leading-tight">
+                {post.title || 'Untitled Post'}
+              </h1>
+              {post.excerpt && (
+                <p className="text-xl text-gray-400 leading-relaxed">{post.excerpt}</p>
+              )}
+            </header>
+            <div className="prose prose-lg prose-invert prose-indigo max-w-none
+              prose-headings:font-semibold prose-headings:text-white
+              prose-p:text-gray-300 prose-p:leading-relaxed
+              prose-a:text-indigo-400 hover:prose-a:text-indigo-300
+              prose-code:text-indigo-300 prose-code:bg-indigo-900/30 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+              prose-pre:bg-white/5 prose-pre:border prose-pre:border-white/8
+              prose-blockquote:border-l-indigo-500 prose-blockquote:text-gray-400
+              prose-img:rounded-xl prose-hr:border-white/10">
+              <ReactMarkdown>{post.content || '*No content yet. Switch to Edit mode.*'}</ReactMarkdown>
+            </div>
           </div>
         </div>
       )}
